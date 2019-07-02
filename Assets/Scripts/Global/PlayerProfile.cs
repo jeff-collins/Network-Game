@@ -14,6 +14,15 @@ public class PlayerProfile : MonoBehaviour
         id = Guid.NewGuid().ToString();
         elo = defaultElo;
 
+        if (Application.isEditor)
+        {
+            elo = 1700;
+            playerName = "john";
+        } else
+        {
+            elo = 1833;
+            playerName = "sara";
+        }
         // add myself to the persistence system - values will be overwritten if read
         FindObjectOfType<PersistenceSystem>().AddPersistentObject("profile", this);
     }
