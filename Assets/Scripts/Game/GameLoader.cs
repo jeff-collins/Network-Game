@@ -13,5 +13,4 @@ public class GameLoader : MonoBehaviour
         Instantiate(gameNetworkManager);
         Instantiate(gameMatchMaker);
     }
-
 }

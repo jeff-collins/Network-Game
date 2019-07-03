@@ -4,71 +4,14 @@ using TMPro;
 
 
 /**
- * This is an object whose properties can not be assigned on a client, and property
- * changes must all take place on the server.  The client tracks changed data, and
- * if a property changes on the client will send notifications to listeners that
- * data has changed.  This class should be code generated.
+ * Player object.  Spawned by GameNetworkManager, one per connected player.
  **/
 public class Player : NetworkBehaviour
 {
-    public PropertyChangedEvent propertyChangedEvent = new PropertyChangedEvent();
+    public PropertyChangeNotifier propertyChangeNotifier;
 
-    void Start()
-    {
-        if (isLocalPlayer)
-        {
-            PlayerProfile profile = FindObjectOfType<PlayerProfile>();
-
-            // send over profile attributes to the other client so
-            // they can be displayed.  
-            id = profile.id;
-            elo = profile.elo;
-            playerName = profile.playerName;
-        }
-
-        // assign position and random rotation
-        if (isServer)
-        {
-            if (isLocalPlayer)
-                transform.position += Vector3.left * 2;
-            transform.GetComponent<Rigidbody>().angularVelocity = new Vector3(1, 1, .7f) * 2;
-        }
-
-        // set up a context specific caption on the player objects
-        Transform text = transform.Find("Canvas/Number");
-        string caption = "";
-        if (isServer)
-        {
-            if (isLocalPlayer)
-                caption = "P1\n(me)";
-            else
-                caption = "P2";
-        } else if (isClient)
-        {
-            if (isLocalPlayer)
-                caption = "P2\n(me)";
-            else
-                caption = "P1";
-        }
-        text.GetComponent<TextMeshProUGUI>().text = caption;
-
-        propertyChangedEvent.AddListener(prop_changed);
-    }
-
-    private void prop_changed(string prop, object newval, object oldval)
-    {
-        if (prop == "playerName")
-        {
-            Transform text = transform.Find("Canvas/Name");
-            text.GetComponent<TextMeshProUGUI>().text = "Name:\n" + playerName;
-        }
-        else if (prop == "elo")
-        {
-            Transform text = transform.Find("Canvas/ELO");
-            text.GetComponent<TextMeshProUGUI>().text = "ELO:\n" + elo;
-        }
-    }
-
+    // Properties
+    #region id
     [SyncVar]
     private string mId;
     private string mPreviousId;
@@ -97,7 +40,8 @@ public class Player : NetworkBehaviour
             mPreviousId = mId;
         }
     }
-
+    #endregion 
+    #region elo
     [SyncVar]
     int mElo;
     private int mPreviousElo;
@@ -126,7 +70,8 @@ public class Player : NetworkBehaviour
             mPreviousElo = mElo;
         }
     }
-
+    #endregion
+    #region inventory
     [SyncVar]
     int mInventory;
     private int mPreviousInventory;
@@ -155,7 +100,8 @@ public class Player : NetworkBehaviour
             mPreviousInventory = mInventory;
         }
     }
-
+    #endregion
+    #region playerName
     [SyncVar]
     private string mPlayerName = "";
     private string mPreviousPlayerName;
@@ -184,7 +130,8 @@ public class Player : NetworkBehaviour
             mPreviousPlayerName = mPlayerName;
         }
     }
-
+    #endregion
+    #region score
     [SyncVar]
     private int mScore;
     private int mPreviousScore;
@@ -213,7 +160,8 @@ public class Player : NetworkBehaviour
             mPreviousScore = mScore;
         }
     }
-
+    #endregion
+    #region myTurn
     [SyncVar]
     private bool mMyTurn;
     private bool mPreviousMyTurn;
@@ -242,23 +190,92 @@ public class Player : NetworkBehaviour
             mPreviousMyTurn = mMyTurn;
         }
     }
+    #endregion
 
     void Update()
     {
-        // need to check for updates for all instances of the Player object
-        // on the client or the server/client, not just the local player.
+        #region Property Change Notifications
         notifyIdPropChange();
         notifyEloPropChange();
         notifyInventoryPropChange();
         notifyPlayerNamePropChange();
         notifyScorePropChange();
         notifyMyTurnPropChange();
+        #endregion 
+    }
 
+    void Start()
+    {
+        if (isLocalPlayer)
+        {
+            PlayerProfile profile = FindObjectOfType<PlayerProfile>();
+
+            // send over profile attributes to the other client so
+            // they can be displayed.  
+            id = profile.id;
+            if (profile.elo == 1200)
+            {
+                elo = Application.isEditor ? 1700 : 1822;
+            } else
+            {
+                elo = profile.elo;
+            }
+            if (profile.playerName == "")
+            {
+                playerName = Application.isEditor ? "john" : "sara";
+            }
+            else
+            {
+                playerName = profile.playerName;
+            }
+        }
+
+        // assign position and random rotation
+        if (isServer)
+        {
+            if (isLocalPlayer)
+                transform.position += Vector3.left * 2;
+            transform.GetComponent<Rigidbody>().angularVelocity = new Vector3(1, 1, .7f) * 2;
+        }
+
+        // set up a context specific caption on the player objects
+        Transform text = transform.Find("Canvas/Number");
+        string caption = "";
+        if (isServer)
+        {
+            if (isLocalPlayer)
+                caption = "P1\n(me)";
+            else
+                caption = "P2";
+        } else if (isClient)
+        {
+            if (isLocalPlayer)
+                caption = "P2\n(me)";
+            else
+                caption = "P1";
+        }
+        text.GetComponent<TextMeshProUGUI>().text = caption;
+
+        propertyChangeNotifier.propertyChangedEvent.AddListener(prop_changed);
+    }
+
+    private void prop_changed(object instance, string prop, object newval, object oldval)
+    {
+        if (prop == "playerName")
+        {
+            Transform text = transform.Find("Canvas/Name");
+            text.GetComponent<TextMeshProUGUI>().text = "Name:\n" + playerName;
+        }
+        else if (prop == "elo")
+        {
+            Transform text = transform.Find("Canvas/ELO");
+            text.GetComponent<TextMeshProUGUI>().text = "ELO:\n" + elo;
+        }
     }
 
     void SendNotification(string propName, object newval, object prevval)
     {
         Debug.Log("Received change notification: " + propName + " new: " + newval + " old: " + prevval);
-        propertyChangedEvent.Invoke(propName, newval, prevval);
+        propertyChangeNotifier.propertyChangedEvent.Invoke(this, propName, newval, prevval);
     }
 }

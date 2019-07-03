@@ -64,8 +64,10 @@ public class GameMatchMaker : MonoBehaviour
 
     void SetupGame()
     {
+        // only happens on server
         currentGame = Instantiate(gamePrefab);
         NetworkServer.Spawn(currentGame.gameObject);
+        currentGame.numPlayers = 1;
     }
 
     // Attempt to join the match -- success/failure is in callback -- OnJoinInternetMatch
@@ -137,9 +139,9 @@ public class GameMatchMaker : MonoBehaviour
         }
     }
 
-    void OnApplicationQuit()
+    public void EndGame()
     {
-        Debug.Log("GameMatchMaker.OnApplicationQuit");
+        Debug.Log("GameMatchMaker.EndGame");
         if (currentMatchInfo != null)
         {
             Debug.Log("destroying game");
@@ -148,7 +150,16 @@ public class GameMatchMaker : MonoBehaviour
             {
                 NetworkManager.singleton.matchMaker.DestroyMatch(currentMatchInfo.networkId, /* domain */0, OnMatchDestroy);
             }
+            currentMatchInfo = null;
+        } else
+        {
+            Debug.Log("no current game to destroy");
         }
+    }
+
+    void OnApplicationQuit()
+    {
+        EndGame();
     }
 
     private void OnMatchDestroy(bool success, string extendedInfo)
